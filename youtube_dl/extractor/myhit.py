@@ -7,31 +7,35 @@ from .common import InfoExtractor
 class MyHitSerialIE(InfoExtractor):
     _VALID_URL = r'https?://(?:www\.)?my-hit\.org/serial/(?P<id>[0-9]+)/?'
     _TESTS = [{
-#         'url': 'https://my-hit.org/serial/4866/',
-#         'info_dict': {
-#             'id': '4866',
-#             'title': 'Рита (1\xa0сезон)',
-#         },
-#         'playlist': [
-#             {
-#                 'info_dict': {
-#                     'id': 'my-hit.org/serial/4866/01/01',
-#                     'ext': 'flv',
-#                     'title': r're:\d+ серия',
-#                     'series': 'Рита (1\xa0сезон)',
-#                 }
-#             },
-#             {
-#                 'info_dict': {
-#                     'id': 'my-hit.org/serial/4866/01/02',
-#                     'ext': 'flv',
-#                     'title': '2 серия',
-#                     'series': 'Рита (1\xa0сезон)',
-#                     'episode_number': 2,
-#                 }
-#             },
-#         ],
-#     }, {
+        'url': 'https://my-hit.org/serial/4866/',
+        'info_dict': {
+            'id': '4866',
+            'title': 'Рита (1\xa0сезон)',
+        },
+        'playlist': [
+            {
+                'info_dict': {
+                    'id': 'my-hit.org/serial/4866/01/01',
+                    'ext': 'flv',
+                    'title': r're:\d+ серия',
+                    'series': 'Рита (1\xa0сезон)',
+                    'season_number': 1,
+                    'season': '',
+                }
+            },
+            {
+                'info_dict': {
+                    'id': 'my-hit.org/serial/4866/01/02',
+                    'ext': 'flv',
+                    'title': '2 серия',
+                    'series': 'Рита (1\xa0сезон)',
+                    'episode_number': 2,
+                    'season_number': 1,
+                    'season': '',
+                }
+            },
+        ],
+    }, {
         'url': 'https://my-hit.org/serial/939',
         'info_dict': {
             'id': '939',
@@ -74,10 +78,17 @@ class MyHitSerialIE(InfoExtractor):
 
         playlist = self._download_json(url + "playlist.txt", video_id)["playlist"]
 
-        if "pltitle" in playlist[0]:
-            entries = [self._get_season(it["playlist"], video_id, season=it["pltitle"], series=title, season_number=i+1) for i, it in enumerate(playlist)]
-        else:
-            entries = [self._get_season(playlist, video_id, series=title)]
+        # If there is only one season, add it explicitly. We assume it will be the season #1.
+        if "pltitle" not in playlist[0]:
+            playlist = [{
+                "comment": "",
+                "pltitle": "",
+                "playlist": playlist
+            }]
+
+        entries = [self._get_season(it["playlist"], video_id,
+                                    season=it["pltitle"], series=title, season_number=i + 1)
+                   for i, it in enumerate(playlist)]
 
         return {
             'id': video_id,
@@ -98,5 +109,3 @@ class MyHitSerialIE(InfoExtractor):
                 **kwargs)
             for i, item in enumerate(playlist)
         ]
-
-

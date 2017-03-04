@@ -20,6 +20,7 @@ from ..utils import (
     float_or_none,
     HEADRequest,
     is_html,
+    js_to_json,
     orderedSet,
     sanitized_Request,
     smuggle_url,
@@ -29,6 +30,7 @@ from ..utils import (
     UnsupportedError,
     xpath_text,
 )
+from .commonprotocols import RtmpIE
 from .brightcove import (
     BrightcoveLegacyIE,
     BrightcoveNewIE,
@@ -78,6 +80,11 @@ from .vbox7 import Vbox7IE
 from .dbtv import DBTVIE
 from .piksel import PikselIE
 from .videa import VideaIE
+from .twentymin import TwentyMinutenIE
+from .ustream import UstreamIE
+from .openload import OpenloadIE
+from .videopress import VideoPressIE
+from .rutube import RutubeIE
 
 
 class GenericIE(InfoExtractor):
@@ -422,6 +429,26 @@ class GenericIE(InfoExtractor):
                 'skip_download': True,  # m3u8 download
             },
         },
+        {
+            # Brightcove with alternative playerID key
+            'url': 'http://www.nature.com/nmeth/journal/v9/n7/fig_tab/nmeth.2062_SV1.html',
+            'info_dict': {
+                'id': 'nmeth.2062_SV1',
+                'title': 'Simultaneous multiview imaging of the Drosophila syncytial blastoderm : Quantitative high-speed imaging of entire developing embryos with simultaneous multiview light-sheet microscopy : Nature Methods : Nature Research',
+            },
+            'playlist': [{
+                'info_dict': {
+                    'id': '2228375078001',
+                    'ext': 'mp4',
+                    'title': 'nmeth.2062-sv1',
+                    'description': 'nmeth.2062-sv1',
+                    'timestamp': 1363357591,
+                    'upload_date': '20130315',
+                    'uploader': 'Nature Publishing Group',
+                    'uploader_id': '1964492299001',
+                },
+            }],
+        },
         # ooyala video
         {
             'url': 'http://www.rollingstone.com/music/videos/norwegian-dj-cashmere-cat-goes-spartan-on-with-me-premiere-20131219',
@@ -565,17 +592,6 @@ class GenericIE(InfoExtractor):
                 'title': 'Hidden miracles of the natural world',
                 'uploader': 'Louie Schwartzberg',
                 'description': 'md5:8145d19d320ff3e52f28401f4c4283b9',
-            }
-        },
-        # Embedded Ustream video
-        {
-            'url': 'http://www.american.edu/spa/pti/nsa-privacy-janus-2014.cfm',
-            'md5': '27b99cdb639c9b12a79bca876a073417',
-            'info_dict': {
-                'id': '45734260',
-                'ext': 'flv',
-                'uploader': 'AU SPA:  The NSA and Privacy',
-                'title': 'NSA and Privacy Forum Debate featuring General Hayden and Barton Gellman'
             }
         },
         # nowvideo embed hidden behind percent encoding
@@ -934,6 +950,29 @@ class GenericIE(InfoExtractor):
                 'title': 'Webinar: Using Discovery, The National Archives’ online catalogue',
             },
         },
+        # jwplayer rtmp
+        {
+            'url': 'http://www.suffolk.edu/sjc/',
+            'info_dict': {
+                'id': 'sjclive',
+                'ext': 'flv',
+                'title': 'Massachusetts Supreme Judicial Court Oral Arguments',
+                'uploader': 'www.suffolk.edu',
+            },
+            'params': {
+                'skip_download': True,
+            }
+        },
+        # Complex jwplayer
+        {
+            'url': 'http://www.indiedb.com/games/king-machine/videos',
+            'info_dict': {
+                'id': 'videos',
+                'ext': 'mp4',
+                'title': 'king machine trailer 1',
+                'thumbnail': r're:^https?://.*\.jpg$',
+            },
+        },
         # rtl.nl embed
         {
             'url': 'http://www.rtlnieuws.nl/nieuws/buitenland/aanslagen-kopenhagen',
@@ -962,19 +1001,6 @@ class GenericIE(InfoExtractor):
                 'uploader_id': 'PremierMedia',
                 'timestamp': int,
                 'title': 'Os Guinness // Is It Fools Talk? // Unbelievable? Conference 2014',
-            },
-        },
-        # Kaltura embed protected with referrer
-        {
-            'url': 'http://www.disney.nl/disney-channel/filmpjes/achter-de-schermen#/videoId/violetta-achter-de-schermen-ruggero',
-            'info_dict': {
-                'id': '1_g4fbemnq',
-                'ext': 'mp4',
-                'title': 'Violetta - Achter De Schermen - Ruggero',
-                'description': 'Achter de schermen met Ruggero',
-                'timestamp': 1435133761,
-                'upload_date': '20150624',
-                'uploader_id': 'echojecka',
             },
         },
         # Kaltura embed with single quotes
@@ -1447,6 +1473,57 @@ class GenericIE(InfoExtractor):
                 'title': 'Deleted Magic - Star Wars: OT Deleted / Alt. Scenes Docu. Style - DVD Talk Forum',
             },
             'playlist_mincount': 2,
+        },
+        {
+            # 20 minuten embed
+            'url': 'http://www.20min.ch/schweiz/news/story/So-kommen-Sie-bei-Eis-und-Schnee-sicher-an-27032552',
+            'info_dict': {
+                'id': '523629',
+                'ext': 'mp4',
+                'title': 'So kommen Sie bei Eis und Schnee sicher an',
+                'description': 'md5:117c212f64b25e3d95747e5276863f7d',
+            },
+            'params': {
+                'skip_download': True,
+            },
+            'add_ie': [TwentyMinutenIE.ie_key()],
+        },
+        {
+            # VideoPress embed
+            'url': 'https://en.support.wordpress.com/videopress/',
+            'info_dict': {
+                'id': 'OcobLTqC',
+                'ext': 'm4v',
+                'title': 'IMG_5786',
+                'timestamp': 1435711927,
+                'upload_date': '20150701',
+            },
+            'params': {
+                'skip_download': True,
+            },
+            'add_ie': [VideoPressIE.ie_key()],
+        },
+        {
+            # Rutube embed
+            'url': 'http://magazzino.friday.ru/videos/vipuski/kazan-2',
+            'info_dict': {
+                'id': '9b3d5bee0a8740bf70dfd29d3ea43541',
+                'ext': 'flv',
+                'title': 'Магаззино: Казань 2',
+                'description': 'md5:99bccdfac2269f0e8fdbc4bbc9db184a',
+                'uploader': 'Магаззино',
+                'upload_date': '20170228',
+                'uploader_id': '996642',
+            },
+            'params': {
+                'skip_download': True,
+            },
+            'add_ie': [RutubeIE.ie_key()],
+        },
+        {
+            # ThePlatform embedded with whitespaces in URLs
+            'url': 'http://www.golfchannel.com/topics/shows/golftalkcentral.htm',
+            'only_matching': True,
         },
         # {
         #     # TODO: find another test
@@ -2077,10 +2154,9 @@ class GenericIE(InfoExtractor):
             return self.url_result(mobj.group('url'), 'TED')
 
         # Look for embedded Ustream videos
-        mobj = re.search(
-            r'<iframe[^>]+?src=(["\'])(?P<url>http://www\.ustream\.tv/embed/.+?)\1', webpage)
-        if mobj is not None:
-            return self.url_result(mobj.group('url'), 'Ustream')
+        ustream_url = UstreamIE._extract_url(webpage)
+        if ustream_url:
+            return self.url_result(ustream_url, UstreamIE.ie_key())
 
         # Look for embedded arte.tv player
         mobj = re.search(
@@ -2295,8 +2371,9 @@ class GenericIE(InfoExtractor):
                 'Channel': 'channel',
                 'ChannelList': 'channel_list',
             }
-            return self.url_result('limelight:%s:%s' % (
-                lm[mobj.group(1)], mobj.group(2)), 'Limelight%s' % mobj.group(1), mobj.group(2))
+            return self.url_result(smuggle_url('limelight:%s:%s' % (
+                lm[mobj.group(1)], mobj.group(2)), {'source_url': url}),
+                'Limelight%s' % mobj.group(1), mobj.group(2))
 
         mobj = re.search(
             r'''(?sx)
@@ -2306,7 +2383,9 @@ class GenericIE(InfoExtractor):
                         value=(["\'])(?:(?!\3).)*mediaId=(?P<id>[a-z0-9]{32})
             ''', webpage)
         if mobj:
-            return self.url_result('limelight:media:%s' % mobj.group('id'))
+            return self.url_result(smuggle_url(
+                'limelight:media:%s' % mobj.group('id'),
+                {'source_url': url}), 'LimelightMedia', mobj.group('id'))
 
         # Look for AdobeTVVideo embeds
         mobj = re.search(
@@ -2401,6 +2480,30 @@ class GenericIE(InfoExtractor):
         if videa_urls:
             return _playlist_from_matches(videa_urls, ie=VideaIE.ie_key())
 
+        # Look for 20 minuten embeds
+        twentymin_urls = TwentyMinutenIE._extract_urls(webpage)
+        if twentymin_urls:
+            return _playlist_from_matches(
+                twentymin_urls, ie=TwentyMinutenIE.ie_key())
+
+        # Look for Openload embeds
+        openload_urls = OpenloadIE._extract_urls(webpage)
+        if openload_urls:
+            return _playlist_from_matches(
+                openload_urls, ie=OpenloadIE.ie_key())
+
+        # Look for VideoPress embeds
+        videopress_urls = VideoPressIE._extract_urls(webpage)
+        if videopress_urls:
+            return _playlist_from_matches(
+                videopress_urls, ie=VideoPressIE.ie_key())
+
+        # Look for Rutube embeds
+        rutube_urls = RutubeIE._extract_urls(webpage)
+        if rutube_urls:
+            return _playlist_from_matches(
+                rutube_urls, ie=RutubeIE.ie_key())
+
         # Looking for http://schema.org/VideoObject
         json_ld = self._search_json_ld(
             webpage, video_id, default={}, expected_type='VideoObject')
@@ -2425,8 +2528,19 @@ class GenericIE(InfoExtractor):
                 self._sort_formats(entry['formats'])
             return self.playlist_result(entries)
 
+        jwplayer_data_str = self._find_jwplayer_data(webpage)
+        if jwplayer_data_str:
+            try:
+                jwplayer_data = self._parse_json(
+                    jwplayer_data_str, video_id, transform_source=js_to_json)
+                return self._parse_jwplayer_data(jwplayer_data, video_id)
+            except ExtractorError:
+                pass
+
         def check_video(vurl):
             if YoutubeIE.suitable(vurl):
+                return True
+            if RtmpIE.suitable(vurl):
                 return True
             vpath = compat_urlparse.urlparse(vurl).path
             vext = determine_ext(vpath)
@@ -2534,6 +2648,15 @@ class GenericIE(InfoExtractor):
                 'title': video_title,
                 'age_limit': age_limit,
             }
+
+            if RtmpIE.suitable(video_url):
+                entry_info_dict.update({
+                    '_type': 'url_transparent',
+                    'ie_key': RtmpIE.ie_key(),
+                    'url': video_url,
+                })
+                entries.append(entry_info_dict)
+                continue
 
             ext = determine_ext(video_url)
             if ext == 'smil':

@@ -34,6 +34,9 @@ from youtube_dl.utils import (
     find_xpath_attr,
     fix_xml_ampersands,
     get_element_by_class,
+    get_element_by_attribute,
+    get_elements_by_class,
+    get_elements_by_attribute,
     InAdvancePagedList,
     intlist_to_bytes,
     is_html,
@@ -49,6 +52,7 @@ from youtube_dl.utils import (
     parse_filesize,
     parse_count,
     parse_iso8601,
+    pkcs1pad,
     read_batch_urls,
     sanitize_filename,
     sanitize_path,
@@ -510,6 +514,7 @@ class TestUtil(unittest.TestCase):
         self.assertEqual(parse_duration('1 hour 3 minutes'), 3780)
         self.assertEqual(parse_duration('87 Min.'), 5220)
         self.assertEqual(parse_duration('PT1H0.040S'), 3600.04)
+        self.assertEqual(parse_duration('PT00H03M30SZ'), 210)
 
     def test_fix_xml_ampersands(self):
         self.assertEqual(
@@ -784,11 +789,26 @@ class TestUtil(unittest.TestCase):
         on = js_to_json('["abc", "def",]')
         self.assertEqual(json.loads(on), ['abc', 'def'])
 
+        on = js_to_json('[/*comment\n*/"abc"/*comment\n*/,/*comment\n*/"def",/*comment\n*/]')
+        self.assertEqual(json.loads(on), ['abc', 'def'])
+
+        on = js_to_json('[//comment\n"abc" //comment\n,//comment\n"def",//comment\n]')
+        self.assertEqual(json.loads(on), ['abc', 'def'])
+
         on = js_to_json('{"abc": "def",}')
+        self.assertEqual(json.loads(on), {'abc': 'def'})
+
+        on = js_to_json('{/*comment\n*/"abc"/*comment\n*/:/*comment\n*/"def"/*comment\n*/,/*comment\n*/}')
         self.assertEqual(json.loads(on), {'abc': 'def'})
 
         on = js_to_json('{ 0: /* " \n */ ",]" , }')
         self.assertEqual(json.loads(on), {'0': ',]'})
+
+        on = js_to_json('{ /*comment\n*/0/*comment\n*/: /* " \n */ ",]" , }')
+        self.assertEqual(json.loads(on), {'0': ',]'})
+
+        on = js_to_json('{ 0: // comment\n1 }')
+        self.assertEqual(json.loads(on), {'0': 1})
 
         on = js_to_json(r'["<p>x<\/p>"]')
         self.assertEqual(json.loads(on), ['<p>x</p>'])
@@ -799,13 +819,25 @@ class TestUtil(unittest.TestCase):
         on = js_to_json("['a\\\nb']")
         self.assertEqual(json.loads(on), ['ab'])
 
+        on = js_to_json("/*comment\n*/[/*comment\n*/'a\\\nb'/*comment\n*/]/*comment\n*/")
+        self.assertEqual(json.loads(on), ['ab'])
+
         on = js_to_json('{0xff:0xff}')
+        self.assertEqual(json.loads(on), {'255': 255})
+
+        on = js_to_json('{/*comment\n*/0xff/*comment\n*/:/*comment\n*/0xff/*comment\n*/}')
         self.assertEqual(json.loads(on), {'255': 255})
 
         on = js_to_json('{077:077}')
         self.assertEqual(json.loads(on), {'63': 63})
 
+        on = js_to_json('{/*comment\n*/077/*comment\n*/:/*comment\n*/077/*comment\n*/}')
+        self.assertEqual(json.loads(on), {'63': 63})
+
         on = js_to_json('{42:42}')
+        self.assertEqual(json.loads(on), {'42': 42})
+
+        on = js_to_json('{/*comment\n*/42/*comment\n*/:/*comment\n*/42/*comment\n*/}')
         self.assertEqual(json.loads(on), {'42': 42})
 
     def test_extract_attributes(self):
@@ -1073,6 +1105,14 @@ The first line
             ohdave_rsa_encrypt(b'aa111222', e, N),
             '726664bd9a23fd0c70f9f1b84aab5e3905ce1e45a584e9cbcf9bcc7510338fc1986d6c599ff990d923aa43c51c0d9013cd572e13bc58f4ae48f2ed8c0b0ba881')
 
+    def test_pkcs1pad(self):
+        data = [1, 2, 3]
+        padded_data = pkcs1pad(data, 32)
+        self.assertEqual(padded_data[:2], [0, 2])
+        self.assertEqual(padded_data[28:], [0, 1, 2, 3])
+
+        self.assertRaises(ValueError, pkcs1pad, data, 8)
+
     def test_encode_base_n(self):
         self.assertEqual(encode_base_n(0, 30), '0')
         self.assertEqual(encode_base_n(80, 30), '2k')
@@ -1095,6 +1135,32 @@ The first line
 
         self.assertEqual(get_element_by_class('foo', html), 'nice')
         self.assertEqual(get_element_by_class('no-such-class', html), None)
+
+    def test_get_element_by_attribute(self):
+        html = '''
+            <span class="foo bar">nice</span>
+        '''
+
+        self.assertEqual(get_element_by_attribute('class', 'foo bar', html), 'nice')
+        self.assertEqual(get_element_by_attribute('class', 'foo', html), None)
+        self.assertEqual(get_element_by_attribute('class', 'no-such-foo', html), None)
+
+    def test_get_elements_by_class(self):
+        html = '''
+            <span class="foo bar">nice</span><span class="foo bar">also nice</span>
+        '''
+
+        self.assertEqual(get_elements_by_class('foo', html), ['nice', 'also nice'])
+        self.assertEqual(get_elements_by_class('no-such-class', html), [])
+
+    def test_get_elements_by_attribute(self):
+        html = '''
+            <span class="foo bar">nice</span><span class="foo bar">also nice</span>
+        '''
+
+        self.assertEqual(get_elements_by_attribute('class', 'foo bar', html), ['nice', 'also nice'])
+        self.assertEqual(get_elements_by_attribute('class', 'foo', html), [])
+        self.assertEqual(get_elements_by_attribute('class', 'no-such-foo', html), [])
 
 
 if __name__ == '__main__':

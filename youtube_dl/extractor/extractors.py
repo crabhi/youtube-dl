@@ -683,6 +683,9 @@ from .myvi import (
     MyviEmbedIE,
 )
 from .myvidster import MyVidsterIE
+from .namba import (
+    NambaIE,
+)
 from .nationalgeographic import (
     NationalGeographicVideoIE,
     NationalGeographicTVIE,
